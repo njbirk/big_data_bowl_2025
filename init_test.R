@@ -9,4 +9,16 @@ player_play_data
 # merge
 total_play_data <- merge(play_data, player_play_data, by = "playId")
 
-# test plot
+# testing with db
+install.packages("RSQLite")
+library(DBI)
+conn <- dbConnect(RSQLite::SQLite(), "play_data.db")
+
+dbWriteTable(conn, "play_data", play_data)
+dbWriteTable(conn, "player_play_data", play_data)
+
+# test query
+result <- dbGetQuery(conn, "SELECT DISTINCT possessionTeam FROM play_data")
+result
+
+dbDisconnect(conn)
