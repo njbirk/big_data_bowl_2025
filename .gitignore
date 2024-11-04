@@ -53,3 +53,5 @@ data/
 python/env/
 
 python/__pycache__
+
+/env
