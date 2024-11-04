@@ -51,3 +51,5 @@ rsconnect/
 data/
 
 python/env/
+
+python/__pycache__
