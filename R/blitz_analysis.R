@@ -99,9 +99,90 @@ at_snap <- left_join(at_snap, los, by = c('gameId', 'playId'))
 at_snap <- at_snap %>%
   mutate(losX = get_los_x(atSnapX, yardlineNumber))
 
-# Add back to tracking data
+# Add back to tracking data and add distance column
 agg_tracking_df$losX <- at_snap$losX
+agg_tracking_df$losDist <- abs(agg_tracking_df$atSnapX - agg_tracking_df$losX)
 summary(agg_tracking_df)
 
-# Next, need to calculate the box for every play and add a bool for whether or not players are in it
+# Convert home and visitor scores and probabilities to possession and defensive team scores and probablities
+plays_df <- plays_df %>%
+  left_join(select(game_df, gameId, homeTeamAbbr, visitorTeamAbbr), by = "gameId") %>%
+  mutate(
+    possessionTeamScore = if_else(homeTeamAbbr == possessionTeam, preSnapHomeScore, preSnapVisitorScore),
+    defensiveTeamScore = if_else(homeTeamAbbr == defensiveTeam, preSnapHomeScore, preSnapVisitorScore),
+    preSnapPossessionTeamWinProbability = if_else(homeTeamAbbr == possessionTeam, preSnapHomeTeamWinProbability, preSnapVisitorTeamWinProbability),
+    preSnapDefensiveTeamWinProbability = if_else(homeTeamAbbr == defensiveTeam, preSnapHomeTeamWinProbability, preSnapVisitorTeamWinProbability)
+  )
 
+# Only keep essential columns
+names(plays_df)
+plays_df <- plays_df %>%
+  select(
+    gameId,
+    playId,
+    quarter,
+    down,
+    possessionTeamScore,
+    defensiveTeamScore,
+    preSnapPossessionTeamWinProbability,
+    preSnapDefensiveTeamWinProbability,
+    absoluteYardlineNumber,
+    yardsToGo,
+    numLinemen,
+    numLBs,
+    numDBs,
+    numSafeties,
+    playClockAtSnap,
+    blitz
+  )
+
+# Join into tracking data
+training_df <- left_join(agg_tracking_df, plays_df, by = c("gameId", "playId"))
+names(training_df)
+
+# Divide into training and test sets
+library(caret)
+train_index <- createDataPartition(training_df$blitz, p = 0.7, list = FALSE)
+train_set <- training_df[train_index, ]
+test_set <- training_df[-train_index, ]
+
+# separate into features and labels
+trainX <- train_set %>% ungroup() %>% select(-gameId, -playId, -nflId, -atSnapDirection, -blitz)
+trainY <- train_set$blitz
+
+testX <- test_set %>% ungroup() %>% select(-gameId, -playId, -nflId, -atSnapDirection, -blitz)
+testY <- test_set$blitz
+
+# prepping for training
+dtrain <- xgb.DMatrix(data = as.matrix(trainX), label = trainY)
+dtest <- xgb.DMatrix(data = as.matrix(testX), label = testY)
+
+params <- list(
+  objective = "binary:logistic",  # Binary classification
+  eval_metric = "auc",         # Evaluation metric
+  max_depth = 3,                   # Maximum depth of trees
+  eta = 0.1                        # Learning rate
+)
+
+# Training
+xgb_model <- xgb.train(
+  params = params, 
+  data = dtrain, 
+  nrounds = 100
+)
+
+# Prediction
+predictions <- predict(xgb_model, dtest)
+
+# Convert predictions to binary (0/1)
+predictedY <- ifelse(predictions > 0.5, 1, 0)
+
+# Evaluate the model performance
+testY <- factor(testY)
+predictedY <- factor(predictedY)
+
+# Ensure both factors have the same levels
+levels(predictedY) <- levels(testY)
+
+# Create the confusion matrix
+confusionMatrix(predictedY, testY)
