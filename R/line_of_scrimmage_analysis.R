@@ -24,7 +24,7 @@ get_los_dist <- function(playid, nflid) {
   tracking_play <- tracking_df %>% 
     filter((playId == playid) & (nflId == nflid) & (frameType == "SNAP"))
   
-  pos <- ifelse(tracking_play$x > 50, tracking_play$x - 50, tracking_play$x)
+  pos <- ifelse(tracking_play$x > 50, 100 - tracking_play$x, tracking_play$x)
   if (nrow(tracking_play) == 0) {
     return(NA)  # or another appropriate value
   }
@@ -46,9 +46,15 @@ get_los_dist(56, 38577)
 
 presnap_player_df
 
-presnap_player_df %>%
+plays_grouped <- presnap_player_df %>%
   group_by(playId) %>%
   summarise(
     mean_los_dist = mean(los_dist, na.rm = TRUE),
-    count_los_dist = sum(los_dist < 4)
-    )
+    min_los_dist = min(los_dist, na.rm = TRUE),
+    count_los_dist = sum(los_dist < 2)
+    ) %>%
+  mutate(snap_frame = plays_df)
+
+plays_grouped[plays_grouped$playId == 2688,]
+
+head(plays_df)
