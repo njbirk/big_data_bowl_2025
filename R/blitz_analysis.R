@@ -104,6 +104,9 @@ agg_tracking_df$losX <- at_snap$losX
 agg_tracking_df$losDist <- abs(agg_tracking_df$atSnapX - agg_tracking_df$losX)
 summary(agg_tracking_df)
 
+# Export agg_tracking for use elsewhere
+write.csv(agg_tracking_df, "../data/agg_tracking.csv")
+
 # Convert home and visitor scores and probabilities to possession and defensive team scores and probablities
 plays_df <- plays_df %>%
   left_join(select(game_df, gameId, homeTeamAbbr, visitorTeamAbbr), by = "gameId") %>%
@@ -113,6 +116,9 @@ plays_df <- plays_df %>%
     preSnapPossessionTeamWinProbability = if_else(homeTeamAbbr == possessionTeam, preSnapHomeTeamWinProbability, preSnapVisitorTeamWinProbability),
     preSnapDefensiveTeamWinProbability = if_else(homeTeamAbbr == defensiveTeam, preSnapHomeTeamWinProbability, preSnapVisitorTeamWinProbability)
   )
+
+# export player data for use elsewhere
+write.csv(plays_df, "../data/modified_plays.csv")
 
 # Only keep essential columns
 names(plays_df)
@@ -139,6 +145,7 @@ plays_df <- plays_df %>%
 # Join into tracking data
 training_df <- left_join(agg_tracking_df, plays_df, by = c("gameId", "playId"))
 names(training_df)
+features <- train_set %>% ungroup() %>% select(-gameId, -playId, -nflId, -atSnapDirection, -blitz)
 
 # Divide into training and test sets
 library(caret)
@@ -186,3 +193,17 @@ levels(predictedY) <- levels(testY)
 
 # Create the confusion matrix
 confusionMatrix(predictedY, testY)
+
+# feature importance
+importance_matrix <- xgb.importance(feature_names = colnames(features), model = xgb_model)
+importance_df <- as.data.frame(importance_matrix)
+importance_df <- importance_df[order(-importance_df$Gain), ]  # Order by Gain
+
+ggplot(importance_df, aes(x = reorder(Feature, Gain), y = Gain)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = round(Gain, 4)), vjust = -0.5, color = "black") +  # Add text labels
+  coord_flip() +  # Flip the coordinates for better visibility
+  labs(title = "Feature Importance from XGBoost",
+       x = "Features",
+       y = "Gain") +
+  theme_minimal()

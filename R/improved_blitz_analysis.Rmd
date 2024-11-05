@@ -1,0 +1,259 @@
+---
+title: "Improved Blitz Analysis"
+author: "Nolan Birkeland"
+date: "2024-11-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+The first blitz prediction model was not very effective, both in part to a very small sample size of blitzes and poor feature engineering. For this improved model, we will make the following changes:
+
+- Have features as plays, rather than players per play
+- For every play, aggregate the metrics for every defensive player by position group (DL, LB, DB, etc.)
+- Add dummies for offensive formation
+
+We could potentially add dummies for defensive formation, but we would have to use clustering, as this is not provided.
+
+## Getting Started 
+
+First, we start by loading in all necessary libraries and the data directory:
+```{r}
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(factoextra)
+  library(caret)
+  library(xgboost)
+  library(fastDummies)
+})
+
+data_dir <- "../data"
+```
+
+Load in necessary data:
+```{r}
+game_df <- read.csv(file.path(data_dir, "games.csv"))
+plays_df <- read.csv(file.path(data_dir, "modified_plays.csv"))
+players_df <- read.csv(file.path(data_dir, "players.csv"))
+tracking_df <- read.csv(file.path(data_dir, "agg_tracking.csv"))
+```
+
+## Feature Engineering
+
+### Aggregating Tracking Data by Position Group
+
+We first will join the tracking and player data; we can then assign position groups and then aggregate.
+```{r}
+tracking_df <- inner_join(
+  tracking_df, 
+  select(players_df, nflId, position), 
+  by = "nflId"
+)
+
+# Position Groups
+dline_pos <- c('DT', 'DE', 'NT')
+lb_pos <- c('LB', 'ILB', 'MLB', 'OLB')
+db_pos <- c('CB', 'DB')
+safety_pos <- c('SS', 'FS')
+
+# Assigning Position Groups
+tracking_df <- tracking_df %>%
+  mutate(
+    positionGroup = case_when(
+      position %in% dline_pos ~ "DL",
+      position %in% lb_pos ~ "LB",
+      position %in% db_pos ~ "DB",
+      position %in% safety_pos ~ "S",
+      TRUE ~ "other"
+    )
+  )
+
+# Removing unnecessary column
+tracking_df <- tracking_df %>% select(-losX, -position, -atSnapDirection)
+
+# Aggregating stats by group
+tracking_df <- tracking_df %>%
+  group_by(gameId, playId, positionGroup) %>%
+  summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE)), .groups = "keep")
+
+# Remove QBs and deselect nflId
+tracking_df <- tracking_df %>% 
+  select(-nflId) %>%
+  filter(positionGroup != "other")
+```
+
+Next, need to reshape tracking data so there is one row per play so it can be joined with play data
+```{r}
+reshaped_df <- tracking_df %>%
+  select(-X) %>%
+  pivot_wider(
+    names_from = positionGroup,
+    values_from = c(
+      initialX, 
+      initialY,
+      atSnapSpeed,
+      atSnapX,
+      atSnapY,
+      avgSpeed,
+      preSnapDist,
+      losDist
+      )
+  )
+```
+
+### Adding Dummies for Offensive Formations
+
+```{r}
+# First, we need to filter all columns that are not essential
+essential_play_df <- plays_df %>%
+  select(
+    gameId,
+    playId,
+    quarter,
+    down,
+    yardsToGo,
+
+    absoluteYardlineNumber,
+    playClockAtSnap,
+    numLinemen,
+    numLBs,
+    numDBs,
+    numSafeties,
+    possessionTeamScore,
+    defensiveTeamScore,
+    preSnapPossessionTeamWinProbability,
+    preSnapDefensiveTeamWinProbability,
+    offenseFormation,
+    blitz
+  )
+
+# Next, we can add dummies for offense
+essential_play_df <- dummy_cols(essential_play_df, 
+                       select_columns = "offenseFormation",
+                       remove_first_dummy = TRUE,
+                       remove_selected_columns = TRUE
+                       )
+```
+
+### Joining
+
+```{r}
+training_df <- inner_join(essential_play_df, reshaped_df, by = c("gameId", "playId"))
+```
+
+## Training
+
+First, separate into training and test sets
+```{r}
+train_index <- createDataPartition(training_df$blitz, p = 0.7, list = FALSE)
+train_set <- training_df[train_index, ]
+test_set <- training_df[-train_index, ]
+
+# separate into features and labels
+trainX <- train_set %>% select(-gameId, -playId, -blitz)
+trainY <- train_set$blitz
+
+testX <- test_set %>% select(-gameId, -playId, -blitz)
+testY <- test_set$blitz
+
+# prepping for training
+dtrain <- xgb.DMatrix(data = as.matrix(trainX), label = trainY)
+dtest <- xgb.DMatrix(data = as.matrix(testX), label = testY)
+```
+
+Train using XGB classifier, optimizing for logistic loss
+```{r}
+params <- list(
+  objective = "binary:logistic",  
+  eval_metric = "logloss",
+  max_depth = 3,                   
+  eta = 0.1 
+)
+
+# Training
+xgb_model <- xgb.train(
+  params = params, 
+  data = dtrain, 
+  nrounds = 100
+)
+```
+
+## Predictions
+
+```{r}
+# Prediction
+predictions <- predict(xgb_model, dtest)
+
+# Convert predictions to binary (0/1)
+predictedY <- ifelse(predictions > 0.5, 1, 0)
+
+# Evaluate the model performance
+testY <- factor(testY)
+predictedY <- factor(predictedY)
+
+# Ensure both factors have the same levels
+levels(predictedY) <- levels(testY)
+
+# Create the confusion matrix
+confusionMatrix(predictedY, testY)
+```
+
+We definitely still have way too few points, and combining all players into plays has only made this issue worse. To resolve this, we will have to aggregate all tracking data from all nine weeks.
+
+## Training with full data set
+
+```{r}
+training_df <- read.csv(file.path(data_dir, "reshaped_tracking.csv"))
+training_df <- inner_join(essential_play_df, training_df, by = c("gameId", "playId"))
+
+train_index <- createDataPartition(training_df$blitz, p = 0.7, list = FALSE)
+train_set <- training_df[train_index, ]
+test_set <- training_df[-train_index, ]
+
+# separate into features and labels
+trainX <- train_set %>% select(-gameId, -playId, -blitz)
+trainY <- train_set$blitz
+
+testX <- test_set %>% select(-gameId, -playId, -blitz)
+testY <- test_set$blitz
+
+# prepping for training
+dtrain <- xgb.DMatrix(data = as.matrix(trainX), label = trainY)
+dtest <- xgb.DMatrix(data = as.matrix(testX), label = testY)
+
+params <- list(
+  objective = "binary:logistic",  
+  eval_metric = "logloss",
+  max_depth = 3,                   
+  eta = 0.1 
+)
+
+# Training
+xgb_model <- xgb.train(
+  params = params, 
+  data = dtrain, 
+  nrounds = 100
+)
+
+# Prediction
+predictions <- predict(xgb_model, dtest)
+
+# Convert predictions to binary (0/1)
+predictedY <- ifelse(predictions > 0.5, 1, 0)
+
+# Evaluate the model performance
+testY <- factor(testY)
+predictedY <- factor(predictedY)
+
+# Ensure both factors have the same levels
+levels(predictedY) <- levels(testY)
+
+# Create the confusion matrix
+confusionMatrix(predictedY, testY)
+```
+
