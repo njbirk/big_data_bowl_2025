@@ -10,6 +10,10 @@
 
 ## WR Motion
 
+- How effective is motion at determining defensive coverage? 
+- Which WRs are best at motioning?
+- Which QBs are best at reading coverage?
+
 ## Risk/Opportunity Analysis
 
 - Could analyze how suseptible the defense's formation is to short pass, deep pass, rush, pass to particular receiver, etc.
