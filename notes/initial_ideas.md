@@ -19,6 +19,15 @@
 - Could analyze how suseptible the defense's formation is to short pass, deep pass, rush, pass to particular receiver, etc.
 - This could be used by the offense to identify a play that might be success based on where the defense lines up and call an audible.
 
+## Clustering
+
+* Cluster player-frames by position on the field and position relative to ball/other players on same team
+    * Goal is to be able to classify players by where they line up
+
+|Relative to ball|relative to player $i$ (for all $i$)|
+|-|-|
+|$(x,y)-(x_{fb},y_{fb})$|$(x,y)-(x_{P_i},y_{P_i})$|
+
 # Initial Cleaning/Analysis
 
 
