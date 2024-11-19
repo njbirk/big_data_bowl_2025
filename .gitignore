@@ -57,3 +57,4 @@ python/__pycache__
 /env
 **/__pycache__
 /python/data/parqs/*.parq
+**/test*.py
