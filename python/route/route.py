@@ -103,7 +103,11 @@ def plot_routes(
     this_game = plays["gameId"] == gid
     this_play = plays["playId"] == pid
     play = plays[this_game & this_play].iloc[0]
-    los = 110 - play["absoluteYardlineNumber"]
+    los = 0
+    if play["possessionTeam"] == play["yardlineSide"]:
+        los = play["yardlineNumber"]
+    else:
+        los = 100 - play["yardlineNumber"]
     fdown = los + play["yardsToGo"]
     plt.axhline(y=los, color="blue", linewidth=1)
     plt.axhline(y=fdown, color="yellow", linewidth=1)
