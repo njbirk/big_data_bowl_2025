@@ -1,5 +1,6 @@
 import pandas
 import os
+import tqdm
 
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "parqs/")
@@ -15,7 +16,7 @@ def _create_tracking_week(week: int):
 
 
 def _create_tracking():
-    for week in range(1, 10):
+    for week in tqdm.tqdm(range(1, 10), desc="Creating parquet game files"):
         _create_tracking_week(week)
 
 
