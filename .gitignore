@@ -58,3 +58,5 @@ python/__pycache__
 **/__pycache__
 /python/data/parqs/*.parq
 **/test*.py
+**/test*.ipynb
+/nfl-bdb-2025.Rproj

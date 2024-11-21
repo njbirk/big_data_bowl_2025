@@ -1,0 +1,1 @@
+from .cover import detect_cover
