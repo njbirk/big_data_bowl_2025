@@ -2,10 +2,7 @@
 title: "Identifying Beginning of WR Motion"
 author: "Nolan Birkeland"
 date: "`r Sys.Date()`"
-output: 
-  html_document:
-    toc: true
-    toc_float: true
+output: rmarkdown::github_document
 ---
 
 ```{r setup, include=FALSE}
