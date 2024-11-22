@@ -167,3 +167,9 @@ play %>%
   geom_vline(xintercept = max_jerk, color = "green")
 ```
 
+```{r}
+source("utils.R")
+
+print(get_motion_start(play))
+```
+
