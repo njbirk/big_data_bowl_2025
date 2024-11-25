@@ -1,15 +1,46 @@
 import pandas as pd
+from scipy.interpolate import UnivariateSpline
+import matplotlib.pyplot as plt
+import numpy as np
 
 
-def is_in_motion(tracking: pd.DataFrame, players: pd.DataFrame | None = None):
-    # if the players data does not exists, load it in
-    if not isinstance(players, pd.DataFrame):
-        players = pd.read_csv("data/players.csv")
+def get_motion_start(
+    gid: int,
+    pid: int,
+    nflid: int,
+    tracking: pd.DataFrame,
+    smoothing_param: float = 0.4,
+    plot: bool = False,
+) -> int:
+    """
+    Get the motion start based on the players maximum jerk before the snap.
+    The spline curve smoothing parameter is set a 0.4 but can be optimized.
+    """
+    # get the selected player frames before the snap
+    this_game = tracking["gameId"] == gid
+    this_play = tracking["playId"] == pid
+    this_player = tracking["nflId"] == nflid
+    before_snap = tracking["frameType"] == "BEFORE_SNAP"
+    frames = tracking[this_game & this_play & this_player & before_snap]
 
-    # is the player a WR
-    is_wr = tracking["nflid"].isin(players[players["position"] == "WR"]["nflid"])
+    # fit a cubic spline to the player speed data
+    spline = UnivariateSpline(
+        frames["frameId"].values, frames["s"].values, s=smoothing_param
+    )
 
-    motion = is_wr
+    # get the frameId with the maximum jerk
+    frameIds = frames["frameId"].values
+    index = np.argmax(spline(frameIds, 2))
+    frameId_max = frameIds[index]
 
-    #return 
-    return motion
+    # show the plot if told to
+    if plot:
+        X = np.arange(min(frameIds), max(frameIds), 0.1)
+        plt.plot(X, spline(X), color="black")
+        plt.plot(X, spline(X, 1), color="blue")
+        plt.plot(X, spline(X, 2), color="green")
+        plt.axvline(x=frameId_max, color="red")
+        plt.show()
+
+    # return the motion start
+    return frameId_max
