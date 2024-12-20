@@ -1,0 +1,39 @@
+---
+title: "Defender Cover Range Analysis"
+author: "Adam Lynch"
+date: "2024-11-25"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load in the tracking data and any necessary libraries.
+
+```{R, message = FALSE}
+library(dplyr)
+
+tracking = read.csv("../data/tracking_week_1.csv")
+```
+
+## Player Maxes
+
+First we need a way to determine the maximum speed and acceleration a player is capable of reaching. Let's first look at a defensive back.
+
+**Name**: Troy Hill
+
+**NFLID**: 42816
+
+```{R}
+# get only Troy Hill's frames
+troy_hill <- tracking %>% filter(nflId == 42816)
+
+hist(troy_hill$s, breaks=30)
+max(troy_hill$a)
+head(troy_hill[,c("s", "a")], 100)
+```
+

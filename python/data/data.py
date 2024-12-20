@@ -3,7 +3,7 @@ import os
 import tqdm
 
 
-_DATA_DIR = os.path.join(os.path.dirname(__file__), "parqs/")
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "../../data/parqs/")
 
 
 def _create_tracking_week(week: int):
