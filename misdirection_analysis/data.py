@@ -151,20 +151,12 @@ def _compute_orien_vec(tracking: pd.DataFrame) -> pd.DataFrame:
     return tracking
 
 
-def _compute_direc_vec(tracking: pd.DataFrame) -> pd.DataFrame:
-    """
-    Compute the direction vector for a player play
-    """
-    tracking["d_x"] = np.sin(np.radians(tracking["dir"]))
-    tracking["d_y"] = np.cos(np.radians(tracking["dir"]))
-    return tracking
-
-
 def _compute_velo_vec(tracking: pd.DataFrame) -> pd.DataFrame:
     """
     Compute the velocity vector for a player play
     """
-    tracking = _compute_direc_vec(tracking)
+    tracking["d_x"] = np.sin(np.radians(tracking["dir"]))
+    tracking["d_y"] = np.cos(np.radians(tracking["dir"]))
     tracking["v_x"] = tracking["d_x"] * tracking["s"]
     tracking["v_y"] = tracking["d_y"] * tracking["s"]
     tracking.drop(columns=["d_x", "d_y"])
