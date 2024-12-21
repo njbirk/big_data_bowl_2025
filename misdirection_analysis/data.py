@@ -231,7 +231,7 @@ def _create_tracking_adjusted():
         _create_tracking_adjusted_game(gid, plays)
 
 
-def load_tracking(gid: int) -> pd.DataFrame:
+def load_tracking_adjusted(gid: int) -> pd.DataFrame:
     """
     Load tracking data for the game ID given. Stores data in parquet form in the parqs directory. Much faster IO than CSV storage.
     """
