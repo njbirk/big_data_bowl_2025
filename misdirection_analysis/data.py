@@ -18,12 +18,16 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "../data/")
 _PARQ_DIR = os.path.join(os.path.dirname(__file__), "../data/parqs/")
 
 
+def tracking_raw_path(gid: int) -> str:
+    return os.path.join(_PARQ_DIR, f"tracking-{gid}.parq")
+
+
 def _create_tracking_week_raw(week: int):
     week_df = pd.read_csv(os.path.join(DATA_DIR, f"tracking_week_{week}.csv"))
     gids = week_df["gameId"].unique()
     for gid in gids:
         game_df: pd.DataFrame = week_df[week_df["gameId"] == gid]
-        path = os.path.join(_PARQ_DIR, f"tracking-{gid}.parq")
+        path = tracking_raw_path(gid)
         game_df.to_parquet(path)
 
 
@@ -36,7 +40,7 @@ def load_tracking_raw(gid: int) -> pd.DataFrame:
     """
     Load tracking data for the game ID given. Stores data in parquet form in the parqs directory. Much faster IO than CSV storage.
     """
-    path = os.path.join(_PARQ_DIR, f"tracking-{gid}.parq")
+    path = tracking_raw_path(gid)
     if not os.path.exists(path):
         _create_tracking_raw()
     df = pd.read_parquet(path)
@@ -194,9 +198,13 @@ def _compute_vectors(tracking: pd.DataFrame) -> pd.DataFrame:
 # ===================== #
 
 
+def tracking_adjusted_path(gid: int) -> str:
+    return os.path.join(_PARQ_DIR, f"tracking-adjusted-{gid}.parq")
+
+
 def _create_tracking_adjusted_game(gid: int, plays: pd.DataFrame):
     # load in the tracking data
-    tracking_path = os.path.join(_PARQ_DIR, f"tracking-{gid}.parq")
+    tracking_path = tracking_raw_path(gid)
     if not os.path.exists(tracking_path):
         _create_tracking_raw()
     tracking = pd.read_parquet(tracking_path)
@@ -211,7 +219,7 @@ def _create_tracking_adjusted_game(gid: int, plays: pd.DataFrame):
     tracking.drop(columns=["o", "s", "a", "dir"])
 
     # write the adjusted tracking data
-    adjusted_tracking_path = os.path.join(_PARQ_DIR, f"tracking-adjusted-{gid}.parq")
+    adjusted_tracking_path = tracking_adjusted_path(gid)
     tracking.to_parquet(adjusted_tracking_path)
 
 
@@ -227,7 +235,7 @@ def load_tracking_adjusted(gid: int) -> pd.DataFrame:
     """
     Load tracking data for the game ID given. Stores data in parquet form in the parqs directory. Much faster IO than CSV storage.
     """
-    path = os.path.join(_PARQ_DIR, f"tracking-adjusted-{gid}.parq")
+    path = tracking_adjusted_path(gid)
     if not os.path.exists(path):
         _create_tracking_adjusted()
     df = pd.read_parquet(path)
