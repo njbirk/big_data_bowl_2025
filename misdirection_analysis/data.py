@@ -14,12 +14,12 @@ import numpy as np
 #   | use load_tracking() to get tracking data by gid and pid
 
 
-_DATA_DIR = os.path.join(os.path.dirname(__file__), "../data/")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "../data/")
 _PARQ_DIR = os.path.join(os.path.dirname(__file__), "../data/parqs/")
 
 
 def _create_tracking_week_raw(week: int):
-    week_df = pd.read_csv(os.path.join(_DATA_DIR, f"tracking_week_{week}.csv"))
+    week_df = pd.read_csv(os.path.join(DATA_DIR, f"tracking_week_{week}.csv"))
     gids = week_df["gameId"].unique()
     for gid in gids:
         game_df: pd.DataFrame = week_df[week_df["gameId"] == gid]
@@ -109,7 +109,7 @@ def _clean_coords(tracking: pd.DataFrame, plays: pd.DataFrame) -> pd.DataFrame:
 
     # adjust y relative to footballs position
     football_mask = (tracking["displayName"] == "football") & (
-        tracking["event"] == "ball_snap"
+        (tracking["event"] == "ball_snap") | (tracking["event"] == "snap_direct")
     )
     tracking = pd.merge(
         tracking,
@@ -216,8 +216,8 @@ def _create_tracking_adjusted_game(gid: int, plays: pd.DataFrame):
 
 
 def _create_tracking_adjusted():
-    games = pd.read_csv(os.path.join(_DATA_DIR, "games.csv"))
-    plays = pd.read_csv(os.path.join(_DATA_DIR, "plays.csv"))
+    games = pd.read_csv(os.path.join(DATA_DIR, "games.csv"))
+    plays = pd.read_csv(os.path.join(DATA_DIR, "plays.csv"))
     all_gid = games["gameId"].unique()
     for gid in tqdm.tqdm(all_gid, desc="Creating adjusted parquet game files"):
         _create_tracking_adjusted_game(gid, plays)
