@@ -1,3 +1,11 @@
+## Data Setup (`data_setup.py`)
+
+- Run `setup()` to setup all the data files
+  - Creates the `parqs` directory if it doesn't exist
+  - Creates the raw tracking data
+  - Creates the adjusted tracking data
+  - Runs lineset and motion detection
+
 ## Data File (`data.py`)
 
 - Ensure that the directory `data/parqs` exists.
@@ -22,6 +30,6 @@ The adjusted tracking data does not include `s`, `a`, `o`, or `dir`, but instead
 
 - The pre-existing lineset event was not accurate enough, so a method was added to perform lineset detection. This method simply analyzes the offenses average speed and their distance from the line of scrimmage (speed is sometimes 0 for all players during the huddle)
 
-- The `man_in_motion` event was also not accurate for usage as a motion start indicator, so the spline method is used to calculate motion start. A slight adjustment was made to find a local jerk maxima rather than the global maximum. This is because the global jerk maximum sometimes occurs just after huddle break.
+- The `man_in_motion` event was also not accurate for usage as a motion start indicator, so the spline method is used to calculate motion start. A slight adjustment was made to find a local jerk maxima rather than the global maximum. This is because the global jerk maximum sometimes occurs while the player is changing direction during motion.
 
 - Motion end event is simply the first frame such that all frames after until the snap the player has 0 speed (or within some low speed threshold).
