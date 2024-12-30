@@ -4,7 +4,6 @@ import os
 import tqdm
 from .motion_detection import MOTION_EVENT_COLUMN_NAME
 import numpy as np
-import datetime
 from . import data
 
 
@@ -228,13 +227,13 @@ DEFAULT_METRIC_DATA = {
 }
 
 
-def create_dataset() -> str:
+def create_motion_dataset(dset_id: str = "main"):
     """
     Create the pre-motion classification dataset.
 
     DataFrame has a row for each pre-motioning player play and a column for each defined metrics.
 
-    Returns the path to the parquet file where the dataset is written.
+    Pass a string name as `dset_id` for the dataset if testing, otherwise the "main" premotion dataset is overwritten.
     """
     # get all pre-motioning player plays
     player_play = pd.read_csv(os.path.join(data.DATA_DIR, "player_play.csv"))
@@ -281,8 +280,11 @@ def create_dataset() -> str:
     # convert the metric data to pd.DataFrame
     metric_data = pd.DataFrame(metric_data)
 
-    # write the dataset to the data files with a timestamp
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    path = os.path.join(data._PARQ_DIR, f"dataset-motionclass-{timestamp}.parq")
+    # write the dataset to the data files folder
+    path = os.path.join(data._PARQ_DIR, f"dataset-motionclass-{dset_id}.parq")
     metric_data.to_parquet(path)
-    return path
+
+
+def load_motion_dataset(dset_id: str = "main"):
+    path = os.path.join(data._PARQ_DIR, f"dataset-motionclass-{dset_id}.parq")
+    return pd.read_parquet(path)
