@@ -33,3 +33,8 @@ The adjusted tracking data does not include `s`, `a`, `o`, or `dir`, but instead
 - The `man_in_motion` event was also not accurate for usage as a motion start indicator, so the spline method is used to calculate motion start. A slight adjustment was made to find a local jerk maxima rather than the global maximum. This is because the global jerk maximum sometimes occurs while the player is changing direction during motion.
 
 - Motion end event is simply the first frame such that all frames after until the snap the player has 0 speed (or within some low speed threshold).
+
+## Pre-Motion Classification (`premotion_classify.py`)
+
+- Call `create_dataset() -> str` to create a dataset that K-means or another classification algorithm can run on
+  - Return the path to dataset in parquet format (call `pd.read_parquet(path)`). The path is created from a unique timestamp in case any additional datasets are created later
