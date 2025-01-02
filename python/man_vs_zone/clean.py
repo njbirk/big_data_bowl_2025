@@ -124,7 +124,7 @@ def graph_one_play(tracking, gameId, playId, snap_type):
                     closest_WR = WR
             closest_pairs.append((CB, closest_WR, min_dist))
 
-        for DB, WR, dist in closest_pairs:
+        for CB, WR, dist in closest_pairs:
             G.add_edge(CB, WR, type="coverage", distance=dist)
 
         frames.append(G)
