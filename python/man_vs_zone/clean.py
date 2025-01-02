@@ -101,7 +101,7 @@ def graph_one_play(tracking, gameId, playId, snap_type):
         CBs = [
             nflId
             for nflId, data in G.nodes(data=True)
-            if data["position"] in ["cornerback", "safety"]
+            if data["position"] in ["cornerback"]
         ]
 
         WRs = [
@@ -111,21 +111,21 @@ def graph_one_play(tracking, gameId, playId, snap_type):
         ]
         closest_pairs = []
 
-        for WR in WRs:
+        for CB in CBs:
             min_dist = float("inf")
-            closest_DB = None
-            for CB in CBs:
+            closest_WR = None
+            for WR in WRs:
                 dist = np.linalg.norm(
                     np.array([G.nodes[CB]["x"], G.nodes[CB]["y"]])
                     - np.array([G.nodes[WR]["x"], G.nodes[WR]["y"]])
                 )
                 if dist < min_dist:
                     min_dist = dist
-                    closest_DB = CB
-            closest_pairs.append((WR, closest_DB, min_dist))
+                    closest_WR = WR
+            closest_pairs.append((CB, closest_WR, min_dist))
 
-        for WR, DB, dist in closest_pairs:
-            G.add_edge(WR, DB, type="coverage", distance=dist)
+        for DB, WR, dist in closest_pairs:
+            G.add_edge(CB, WR, type="coverage", distance=dist)
 
         frames.append(G)
 
