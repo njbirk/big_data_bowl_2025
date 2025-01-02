@@ -31,7 +31,10 @@ def _create_tracking_week_raw(week: int):
         game_df.to_parquet(path)
 
 
-def _create_tracking_raw():
+def _create_tracking_raw(force_calcs: bool = False):
+    path = tracking_raw_path(2022090800)
+    if not force_calcs and os.path.exists(path):
+        return
     for week in tqdm.tqdm(range(1, 10), desc="Creating parquet game files"):
         _create_tracking_week_raw(week)
 
@@ -223,7 +226,10 @@ def _create_tracking_adjusted_game(gid: int, plays: pd.DataFrame):
     tracking.to_parquet(adjusted_tracking_path)
 
 
-def _create_tracking_adjusted():
+def _create_tracking_adjusted(force_calcs: bool = False):
+    path = tracking_adjusted_path(2022090800)
+    if not force_calcs and os.path.exists(path):
+        return
     games = pd.read_csv(os.path.join(DATA_DIR, "games.csv"))
     plays = pd.read_csv(os.path.join(DATA_DIR, "plays.csv"))
     all_gid = games["gameId"].unique()

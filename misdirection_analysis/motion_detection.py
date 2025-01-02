@@ -169,80 +169,85 @@ def append_motion_event(force_calc: bool = False):
 
     # iterate through each adjusted tracking game file
     all_gids = games["gameId"].unique()
-    for gid in tqdm.tqdm(all_gids, desc="Calculating motion events"):
-        tracking = data.load_tracking_adjusted(gid)
+    with tqdm.tqdm(total=len(all_gids), desc="Calculating motion events") as pbar:
+        for gid in all_gids:
+            tracking = data.load_tracking_adjusted(gid)
 
-        # compute speed
-        tracking["s"] = np.sqrt(tracking["v_x"] ** 2 + tracking["v_y"] ** 2)
+            # compute speed
+            tracking["s"] = np.sqrt(tracking["v_x"] ** 2 + tracking["v_y"] ** 2)
 
-        # if the event column already exists and we do not force_calc is False, there is nothing more to be done - return
-        if MOTION_EVENT_COLUMN_NAME in tracking.columns and not force_calc:
-            return
+            # if the event column already exists and we do not force_calc is False, there is nothing more to be done - return
+            if MOTION_EVENT_COLUMN_NAME in tracking.columns and not force_calc:
+                pbar.n = len(all_gids)
+                pbar.last_print_n = len(all_gids)
+                pbar.update(0)
+                return
 
-        # initialize motion event column
-        tracking[MOTION_EVENT_COLUMN_NAME] = None
+            # initialize motion event column
+            tracking[MOTION_EVENT_COLUMN_NAME] = None
 
-        # get only player play data for this game
-        player_play_game_mask = player_play["gameId"] == gid
-        player_play_game = player_play[player_play_game_mask]
+            # get only player play data for this game
+            player_play_game_mask = player_play["gameId"] == gid
+            player_play_game = player_play[player_play_game_mask]
 
-        # iterate over each play
-        all_pids = tracking["playId"].unique()
-        for pid in all_pids:
-            # get the offensive team
-            plays_game_mask = plays["gameId"] == gid
-            plays_play_mask = plays["playId"] == pid
-            offensive_club = plays.loc[
-                plays_game_mask & plays_play_mask, "possessionTeam"
-            ].squeeze()
+            # iterate over each play
+            all_pids = tracking["playId"].unique()
+            for pid in all_pids:
+                # get the offensive team
+                plays_game_mask = plays["gameId"] == gid
+                plays_play_mask = plays["playId"] == pid
+                offensive_club = plays.loc[
+                    plays_game_mask & plays_play_mask, "possessionTeam"
+                ].squeeze()
 
-            # get offensive frames for this play
-            tracking_play_mask = tracking["playId"] == pid
-            play_frames = tracking[tracking_play_mask]
-            play_frames_offense_mask = play_frames["club"] == offensive_club
-            offensive_frames = play_frames[play_frames_offense_mask]
+                # get offensive frames for this play
+                tracking_play_mask = tracking["playId"] == pid
+                play_frames = tracking[tracking_play_mask]
+                play_frames_offense_mask = play_frames["club"] == offensive_club
+                offensive_frames = play_frames[play_frames_offense_mask]
 
-            # compute the lineset frameId
-            lineset_frameId = _get_lineset_event(offensive_frames)
+                # compute the lineset frameId
+                lineset_frameId = _get_lineset_event(offensive_frames)
 
-            # set the event column
-            tracking_lineset_frame_mask = tracking["frameId"] == lineset_frameId
-            tracking.loc[
-                tracking_play_mask & tracking_lineset_frame_mask,
-                MOTION_EVENT_COLUMN_NAME,
-            ] = "lineset"
+                # set the event column
+                tracking_lineset_frame_mask = tracking["frameId"] == lineset_frameId
+                tracking.loc[
+                    tracking_play_mask & tracking_lineset_frame_mask,
+                    MOTION_EVENT_COLUMN_NAME,
+                ] = "lineset"
 
-            # iterate through motion players on this play
-            player_play_play_mask = player_play_game["playId"] == pid
-            player_play_motion_mask = player_play_game["motionSinceLineset"] == 1
-            all_nflids = player_play_game.loc[
-                player_play_play_mask & player_play_motion_mask, "nflId"
-            ]
+                # iterate through motion players on this play
+                player_play_play_mask = player_play_game["playId"] == pid
+                player_play_motion_mask = player_play_game["motionSinceLineset"] == 1
+                all_nflids = player_play_game.loc[
+                    player_play_play_mask & player_play_motion_mask, "nflId"
+                ]
 
-            for nflid in all_nflids:
-                # get the player play frames
-                offense_player_mask = offensive_frames["nflId"] == nflid
-                player_frames = offensive_frames[offense_player_mask]
+                for nflid in all_nflids:
+                    # get the player play frames
+                    offense_player_mask = offensive_frames["nflId"] == nflid
+                    player_frames = offensive_frames[offense_player_mask]
 
-                # compute the motion start/stop frameIds
-                start_frameId = _motion_start_frame(player_frames, lineset_frameId)
-                if start_frameId:
-                    end_frameId = _motion_end_frame(player_frames, start_frameId)
+                    # compute the motion start/stop frameIds
+                    start_frameId = _motion_start_frame(player_frames, lineset_frameId)
+                    if start_frameId:
+                        end_frameId = _motion_end_frame(player_frames, start_frameId)
 
-                    # set the event column
-                    tracking_player_mask = tracking["nflId"] == nflid
-                    start_frame = tracking["frameId"] == start_frameId
-                    tracking.loc[
-                        tracking_play_mask & tracking_player_mask & start_frame,
-                        MOTION_EVENT_COLUMN_NAME,
-                    ] = "motion_start"
-                    end_frame = tracking["frameId"] == end_frameId
-                    tracking.loc[
-                        tracking_play_mask & tracking_player_mask & end_frame,
-                        MOTION_EVENT_COLUMN_NAME,
-                    ] = "motion_end"
+                        # set the event column
+                        tracking_player_mask = tracking["nflId"] == nflid
+                        start_frame = tracking["frameId"] == start_frameId
+                        tracking.loc[
+                            tracking_play_mask & tracking_player_mask & start_frame,
+                            MOTION_EVENT_COLUMN_NAME,
+                        ] = "motion_start"
+                        end_frame = tracking["frameId"] == end_frameId
+                        tracking.loc[
+                            tracking_play_mask & tracking_player_mask & end_frame,
+                            MOTION_EVENT_COLUMN_NAME,
+                        ] = "motion_end"
+            pbar.update(1)
 
-        tracking.drop(columns=["s"])
+            tracking.drop(columns=["s"])
 
-        # write the new adjusted tracking data with the lineset event column
-        tracking.to_parquet(data.tracking_adjusted_path(gid))
+            # write the new adjusted tracking data with the lineset event column
+            tracking.to_parquet(data.tracking_adjusted_path(gid))
