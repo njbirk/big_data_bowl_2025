@@ -7,284 +7,461 @@ import numpy as np
 from . import data
 
 
-#                                    # ================== #                                    #
-# ================================== # METRIC COMPUTATION # ================================== #
-#                                    # ================== #                                    #
+CLASSIFICATION_COLUMN_NAME = "premotion_classification"
 
 
-# ================= #
-# Distance Traveled #
-# ================= #
+CROSSOVER_LEFT_JET = "crossover_left_jet"
 
 
-DISTANCE_X = "distance_x"
+def _crossover_left_jet(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = -2
+    X_THRESH = 5
 
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_v_x = tracking["v_x"].iloc[-1]
 
-def _distance_x_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    start_x = tracking.loc[motion_start, "x"]
-    end_x = tracking.loc[motion_end, "x"]
-    return end_x - start_x
+    if initial_x > 0 and final_x < X_THRESH and final_v_x < SPEED_THRESH:
+        return True
+    else:
+        return False
 
 
-DISTANCE_Y = "distance_y"
+CROSSOVER_RIGHT_JET = "crossover_right_jet"
 
 
-def _distance_y_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    start_y = tracking.loc[motion_start, "y"]
-    end_y = tracking.loc[motion_end, "y"]
-    return end_y - start_y
+def _crossover_right_jet(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
+    X_THRESH = -5
 
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_v_x = tracking["v_x"].iloc[-1]
 
-TOTAL_DISTANCE = "total_distance"
+    if initial_x < 0 and final_x > X_THRESH and final_v_x > SPEED_THRESH:
+        return True
+    else:
+        return False
 
 
-def _total_distance_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    start_x = tracking.loc[motion_start, "x"]
-    end_x = tracking.loc[motion_end, "x"]
-    start_y = tracking.loc[motion_start, "y"]
-    end_y = tracking.loc[motion_end, "y"]
-    return np.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2)
+CROSSOVER_LEFT_SET = "crossover_left_set"
 
 
-# ===== #
-# Speed #
-# ===== #
+def _crossover_left_set(tracking: pd.DataFrame) -> bool:
+    X_THRESH = 2.5
+    SPEED_THRESH = 2
 
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
-AVERAGE_SPEED = "average_speed"
+    if initial_x > X_THRESH and final_x < -X_THRESH and final_speed < SPEED_THRESH:
+        return True
+    else:
+        return False
 
 
-def _average_speed_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    start_x = tracking.loc[motion_start, "x"]
-    end_x = tracking.loc[motion_end, "x"]
-    start_y = tracking.loc[motion_start, "y"]
-    end_y = tracking.loc[motion_end, "y"]
-    distance = np.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2)
-    return distance / ((motion_end - motion_start) * 0.1)
+CROSSOVER_RIGHT_SET = "crossover_right_set"
 
 
-MAX_SPEED = "max_speed"
+def _crossover_right_set(tracking: pd.DataFrame) -> bool:
+    X_THRESH = -2.5
+    SPEED_THRESH = 2
 
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
-def _max_speed_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    return max(tracking["s"])
+    if initial_x < X_THRESH and final_x > -X_THRESH and final_speed < SPEED_THRESH:
+        return True
+    else:
+        return False
 
 
-# ======== #
-# Location #
-# ======== #
+LEFT_SIDE_SHIFT_LEFT = "left_side_shift_left"
 
-INITIAL_X = "initial_x"
 
+def _left_side_shift_left(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
 
-def _initial_x_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    return tracking.loc[motion_start, "x"]
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
+    if (
+        initial_x < 0
+        and final_x < 0
+        and final_x < initial_x
+        and final_speed < SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
 
-INITIAL_Y = "initial_y"
 
+LEFT_SIDE_SHIFT_RIGHT = "left_side_shift_right"
 
-def _initial_y_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    return tracking.loc[motion_start, "y"]
 
+def _left_side_shift_right(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
 
-FINAL_X = "final_x"
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
+    if (
+        initial_x < 0
+        and final_x < 0
+        and final_x > initial_x
+        and final_speed < SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
 
-def _final_x_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    return tracking.loc[motion_end, "x"]
 
+RIGHT_SIDE_SHIFT_LEFT = "right_side_shift_left"
 
-FINAL_Y = "final_y"
 
+def _right_side_shift_left(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
 
-def _final_y_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    return tracking.loc[motion_end, "y"]
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
+    if (
+        initial_x > 0
+        and final_x > 0
+        and final_x < initial_x
+        and final_speed < SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
 
-# ====== #
-# Timing #
-# ====== #
 
+RIGHT_SIDE_SHIFT_RIGHT = "right_side_shift_right"
 
-SPEED_AT_SNAP = "speed_at_snap"
 
+def _right_side_shift_right(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
 
-def _speed_at_snap_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    return tracking.loc[snap, "s"]
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
+    if (
+        initial_x > 0
+        and final_x > 0
+        and final_x > initial_x
+        and final_speed < SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
 
-X_AT_SNAP = "x_at_snap"
 
+LEFT_SIDE_JET_LEFT = "left_side_jet_left"
 
-def _x_at_snap_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    return tracking.loc[snap, "x"]
 
+def _left_side_jet_left(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
 
-Y_AT_SNAP = "y_at_snap"
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
+    if (
+        initial_x < 0
+        and final_x < 0
+        and final_x < initial_x
+        and final_speed > SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
 
-def _y_at_snap_metric(
-    tracking: pd.DataFrame, motion_start: int, motion_end: int, snap: int
-) -> float:
-    return tracking.loc[snap, "y"]
 
+LEFT_SIDE_JET_RIGHT = "left_side_jet_right"
 
-# ====================== #
-# Metric Master Function #
-# ====================== #
 
+def _left_side_jet_right(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
+    X_THRESH = -5
 
-METRIC_FUNCTIONS = {
-    DISTANCE_X: _distance_x_metric,
-    DISTANCE_Y: _distance_y_metric,
-    TOTAL_DISTANCE: _total_distance_metric,
-    AVERAGE_SPEED: _average_speed_metric,
-    MAX_SPEED: _max_speed_metric,
-    INITIAL_X: _initial_x_metric,
-    INITIAL_Y: _initial_y_metric,
-    FINAL_X: _final_x_metric,
-    FINAL_Y: _final_y_metric,
-    SPEED_AT_SNAP: _speed_at_snap_metric,
-    X_AT_SNAP: _x_at_snap_metric,
-    Y_AT_SNAP: _y_at_snap_metric,
-}
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
+    if (
+        initial_x < 0
+        and final_x < X_THRESH
+        and final_x > initial_x
+        and final_speed > SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
 
-def _get_metrics(tracking: pd.DataFrame, row: pd.Series) -> pd.Series:
-    """
-    Compute each metric for the given tracking and player play (row).
-    """
-    # get the tracking data for this player play
-    this_play = tracking["playId"] == row["playId"]
-    this_player = tracking["nflId"] == float(row["nflId"])
-    tracking = tracking[this_play & this_player]
 
-    # check that there was motion detection
-    if not sum(tracking[MOTION_EVENT_COLUMN_NAME] == "motion_start"):
-        return pd.Series()
+RIGHT_SIDE_JET_LEFT = "right_side_jet_left"
 
-    # get the indexes of motion start, end, and snap
-    start_mask = tracking[MOTION_EVENT_COLUMN_NAME] == "motion_start"
-    motion_start = tracking[start_mask].index[0]
-    end_mask = tracking[MOTION_EVENT_COLUMN_NAME] == "motion_end"
-    motion_end = tracking[end_mask].index[0]
-    snap_mask = tracking["event"].isin(["ball_snap", "snap_direct"])
-    snap = tracking[snap_mask].index[0]
 
-    # iterate over all metrics and compute for the player play tracking data
-    metrics = pd.Series()
-    for metric_name, function in METRIC_FUNCTIONS.items():
-        metrics[metric_name] = function(tracking, motion_start, motion_end, snap)
+def _right_side_jet_left(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
+    X_THRESH = 5
 
-    return metrics
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
+    if (
+        initial_x > 0
+        and final_x > X_THRESH
+        and final_x < initial_x
+        and final_speed > SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
 
-#                                    # ================ #                                    #
-# ================================== # DATASET CREATION # ================================== #
-#                                    # ================ #                                    #
 
+RIGHT_SIDE_JET_RIGHT = "right_side_jet_right"
 
-# we populate a dictionary and convert to pd.DataFrame at the end for increased performance
-DEFAULT_METRIC_DATA = {
-    "gameId": [],
-    "playId": [],
-    "nflId": [],
-    DISTANCE_X: [],
-    DISTANCE_Y: [],
-    TOTAL_DISTANCE: [],
-    AVERAGE_SPEED: [],
-    MAX_SPEED: [],
-    INITIAL_X: [],
-    INITIAL_Y: [],
-    FINAL_X: [],
-    FINAL_Y: [],
-    SPEED_AT_SNAP: [],
-    X_AT_SNAP: [],
-    Y_AT_SNAP: [],
-}
 
+def _right_side_jet_right(tracking: pd.DataFrame) -> bool:
+    SPEED_THRESH = 2
 
-def create_motion_dataset(dset_id: str = "main"):
-    """
-    Create the pre-motion classification dataset.
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
 
-    DataFrame has a row for each pre-motioning player play and a column for each defined metrics.
+    if (
+        initial_x > 0
+        and final_x > 0
+        and final_x > initial_x
+        and final_speed > SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
 
-    Pass a string name as `dset_id` for the dataset if testing, otherwise the "main" premotion dataset is overwritten.
-    """
-    # get all pre-motioning player plays
+
+BACKFIELD_RIGHT_SET = "backfield_right_set"
+
+
+def _backfield_right_set(tracking: pd.DataFrame) -> bool:
+    X_THRESH = 2.5
+    SPEED_THRESH = 2
+
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
+
+    if (
+        initial_x < X_THRESH
+        and initial_x > -X_THRESH
+        and final_x > X_THRESH
+        and final_speed < SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
+
+
+BACKFIELD_LEFT_SET = "backfield_left_set"
+
+
+def _backfield_left_set(tracking: pd.DataFrame) -> bool:
+    X_THRESH = 2.5
+    SPEED_THRESH = 2
+
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
+
+    if (
+        initial_x < X_THRESH
+        and initial_x > -X_THRESH
+        and final_x < -X_THRESH
+        and final_speed < SPEED_THRESH
+    ):
+        return True
+    else:
+        return False
+
+
+BACKFIELD_RIGHT_JET = "backfield_right_jet"
+
+
+def _backfield_right_jet(tracking: pd.DataFrame) -> bool:
+    X_THRESH = 2.5
+    SPEED_THRESH = 2
+    V_X_THRESH = 2
+
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
+    final_v_x = tracking["v_x"].iloc[-1]
+
+    if (
+        initial_x < X_THRESH
+        and initial_x > -X_THRESH
+        and final_x > X_THRESH
+        and final_speed > SPEED_THRESH
+        and final_v_x > V_X_THRESH
+    ):
+        return True
+    else:
+        return False
+
+
+BACKFIELD_LEFT_JET = "backfield_left_jet"
+
+
+def _backfield_left_jet(tracking: pd.DataFrame) -> bool:
+    X_THRESH = 2.5
+    SPEED_THRESH = 2
+    V_X_THRESH = -2
+
+    initial_x = tracking["x"].iloc[0]
+    final_x = tracking["x"].iloc[-1]
+    final_speed = tracking["s"].iloc[-1]
+    final_v_x = tracking["v_x"].iloc[-1]
+
+    if (
+        initial_x < X_THRESH
+        and initial_x > -X_THRESH
+        and final_x < X_THRESH
+        and final_speed > SPEED_THRESH
+        and final_v_x < V_X_THRESH
+    ):
+        return True
+    else:
+        return False
+
+
+def _classify_motion(tracking: pd.DataFrame) -> str:
+    motion_types = []
+    if _crossover_left_jet(tracking):
+        motion_types.append(CROSSOVER_LEFT_JET)
+    if _crossover_right_jet(tracking):
+        motion_types.append(CROSSOVER_RIGHT_JET)
+    if _crossover_left_set(tracking):
+        motion_types.append(CROSSOVER_LEFT_SET)
+    if _crossover_right_set(tracking):
+        motion_types.append(CROSSOVER_RIGHT_SET)
+    if _left_side_shift_left(tracking):
+        motion_types.append(LEFT_SIDE_SHIFT_LEFT)
+    if _left_side_shift_right(tracking):
+        motion_types.append(LEFT_SIDE_SHIFT_RIGHT)
+    if _right_side_shift_left(tracking):
+        motion_types.append(RIGHT_SIDE_SHIFT_LEFT)
+    if _right_side_shift_right(tracking):
+        motion_types.append(RIGHT_SIDE_SHIFT_RIGHT)
+    if _left_side_jet_left(tracking):
+        motion_types.append(LEFT_SIDE_JET_LEFT)
+    if _left_side_jet_right(tracking):
+        motion_types.append(LEFT_SIDE_JET_RIGHT)
+    if _right_side_jet_left(tracking):
+        motion_types.append(RIGHT_SIDE_JET_LEFT)
+    if _right_side_jet_right(tracking):
+        motion_types.append(RIGHT_SIDE_JET_RIGHT)
+    if _backfield_right_set(tracking):
+        motion_types.append(BACKFIELD_RIGHT_SET)
+    if _backfield_left_set(tracking):
+        motion_types.append(BACKFIELD_LEFT_SET)
+    if _backfield_right_jet(tracking):
+        motion_types.append(BACKFIELD_RIGHT_JET)
+    if _backfield_left_jet(tracking):
+        motion_types.append(BACKFIELD_LEFT_JET)
+
+    if len(motion_types) == 0:
+        return "unclassified"
+    else:
+        return "|".join(motion_types)
+
+
+def append_premotion_classification(force_calc: bool = False):
+    # load in the data
     player_play = pd.read_csv(os.path.join(data.DATA_DIR, "player_play.csv"))
+
+    # if the column already exists and we do not force calculation, there is nothing to do
+    if not force_calc and CLASSIFICATION_COLUMN_NAME in player_play.columns:
+        return
+
+    # get premotioning player plays
     shifted = player_play["shiftSinceLineset"] == 1
     motioned = player_play["motionSinceLineset"] == 1
     pre_motion = player_play[shifted | motioned]
     pre_motion = pre_motion[["gameId", "playId", "nflId"]]
 
-    # sort by the gameId so each game's tracking data is loaded only once when iterating
-    pre_motion = pre_motion.sort_values(by="gameId")
-
     # iterate over each pre-motioning player play and compute all metrics
-    current_gameId = None
-    tracking = None
-    metric_data = DEFAULT_METRIC_DATA.copy()
-    for _, row in tqdm.tqdm(
-        pre_motion.iterrows(),
-        desc="Computing metrics for pre-motioning player plays",
-        total=len(pre_motion),
-    ):
-        # check if we need to load in a new game tracking data
-        if row["gameId"] != current_gameId:
-            tracking = data.load_tracking_adjusted(row["gameId"])
-            current_gameId = row["gameId"]
+    all_gids = pre_motion["gameId"].unique()
+    for gid in tqdm.tqdm(all_gids, desc="Classifiying pre-motion player plays"):
+        tracking = data.load_tracking_adjusted(gid)
 
-            # compute the speed to be used by metric functions
-            tracking["s"] = np.sqrt(tracking["v_x"] ** 2 + tracking["v_y"] ** 2)
+        # compute the speed to be used by metric functions
+        tracking["s"] = np.sqrt(tracking["v_x"] ** 2 + tracking["v_y"] ** 2)
 
-        # get the metrics for this player play
-        row_metrics = _get_metrics(tracking, row)
+        # get motion plays for this game
+        player_play_game_mask = player_play["gameId"] == gid
 
-        # if it is empty, there was no motion detection in the frame - continue to next player play
-        if row_metrics.empty:
-            continue
+        # get player play for this game
+        pre_motion_game = pre_motion[pre_motion["gameId"] == gid]
 
-        # append the player play identifiers
-        for index, value in row.items():
-            metric_data[index].append(value)
+        # iterate through each play
+        all_pids = pre_motion_game["playId"].unique()
+        for pid in all_pids:
+            # players plays for this play
+            pre_motion_play = pre_motion_game[pre_motion_game["playId"] == pid]
 
-        # get the metrics for this player play and append
-        for index, value in row_metrics.items():
-            metric_data[index].append(value)
+            # get the tracking for this play
+            tracking_play = tracking[tracking["playId"] == pid]
 
-    # convert the metric data to pd.DataFrame
-    metric_data = pd.DataFrame(metric_data)
+            # get the player play play mask
+            player_play_play_mask = player_play["playId"] == pid
 
-    # write the dataset to the data files folder
-    path = os.path.join(data._PARQ_DIR, f"dataset-motionclass-{dset_id}.parq")
-    metric_data.to_parquet(path)
+            # iterate through each player
+            all_nflids = pre_motion_play["nflId"].unique()
+            for nflid in all_nflids:
+                # get the frames for this player
+                player_play_player_mask = player_play["nflId"] == nflid
 
+                # get tracking for this play
+                tracking_player = tracking_play[tracking_play["nflId"] == nflid]
 
-def load_motion_dataset(dset_id: str = "main"):
-    path = os.path.join(data._PARQ_DIR, f"dataset-motionclass-{dset_id}.parq")
-    return pd.read_parquet(path)
+                # get frames during motion
+                start_frame_df = tracking_player.loc[
+                    tracking_player[MOTION_EVENT_COLUMN_NAME] == "motion_start",
+                    "frameId",
+                ]
+                end_frame_df = tracking_player.loc[
+                    tracking_player[MOTION_EVENT_COLUMN_NAME] == "motion_end",
+                    "frameId",
+                ]
+
+                if not (len(start_frame_df) > 0 and len(end_frame_df) > 0):
+                    continue
+
+                start_frame = start_frame_df.iloc[0]
+                end_frame = end_frame_df.iloc[0]
+
+                # get tracking between these frames
+                tracking_frames = tracking_player[
+                    (tracking_player["frameId"] >= start_frame)
+                    & (tracking_player["frameId"] <= end_frame)
+                ]
+
+                motion_type = _classify_motion(tracking_frames)
+
+                player_play.loc[
+                    player_play_game_mask
+                    & player_play_play_mask
+                    & player_play_player_mask,
+                    CLASSIFICATION_COLUMN_NAME,
+                ] = motion_type
+
+    # write the new player play data
+    player_play.to_csv(os.path.join(data.DATA_DIR, "player_play.csv"))

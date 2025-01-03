@@ -137,6 +137,9 @@ def _clean_coords(tracking: pd.DataFrame, plays: pd.DataFrame) -> pd.DataFrame:
     tracking.loc[direction_mask, "x"] *= -1
     tracking.loc[direction_mask, "y"] *= -1
     tracking.loc[direction_mask, "o"] = (tracking.loc[direction_mask, "o"] + 180) % 360
+    tracking.loc[direction_mask, "dir"] = (
+        tracking.loc[direction_mask, "dir"] + 180
+    ) % 360
 
     # flip coordinates to (x, y) instead of (y, x)
     tracking = tracking.rename({"x": "y", "y": "x"}, axis="columns")

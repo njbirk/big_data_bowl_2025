@@ -2,6 +2,7 @@ import os
 from . import data
 from . import motion_detection
 from . import separation
+from . import premotion_classify
 
 
 def setup(force_calcs: bool = False):
@@ -13,6 +14,7 @@ def setup(force_calcs: bool = False):
     print("\tpbar4: 154 seconds")
     print("\tpbar5: 20 seconds")
     print("\tpbar6: 108 seconds")
+    print("\tpbar7: 46 seconds")
     print("\ttotal time: ~ 10 min")
 
     # create the parqs folder if it does not exist
@@ -30,3 +32,6 @@ def setup(force_calcs: bool = False):
 
     # append the separation probability
     separation.append_separation_probability(force_calcs)
+
+    # run the premotion classification
+    premotion_classify.append_premotion_classification(force_calcs)
