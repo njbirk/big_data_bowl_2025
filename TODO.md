@@ -1,1 +1,0 @@
-# adjust separation metric to account for velocity and acceleration
