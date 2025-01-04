@@ -213,7 +213,7 @@ separation_metric <- sum(unlist(weighted_motions)) * 100
 print(separation_metric)
 
 # Now, we can write some functions to do this automatically
-get_distances <- function(defenders, interception_coords) {
+get_distances <- function(defenders, interception_coords, t_intercept) {
   distances <- list()
   for (i in 1:nrow(defenders)) {
     defender <- defenders[i,]
@@ -231,7 +231,9 @@ get_distances <- function(defenders, interception_coords) {
     # Calculate position at time of interception
     p_t <- predict_position(p0, v, a, dir, t_intercept)
     
-    defender_positions <- append(defender_positions, list(p_t))
+    dist <- sqrt(sum((p_t - interception_coords)^2))
+    
+    distances <- append(distances, list(dist))
   }
   
   return(distances)
@@ -264,9 +266,9 @@ get_relative_motions <- function(defenders, interception_coords) {
   return(relative_motions)
 }
 
-calculate_separation_metric <- function(play, frame, targeted_receiver, relevant_defenders, interception_coords) {
+calculate_separation_metric <- function(relevant_defenders, interception_coords, t_intercept) {
   # Calculate distances and relative motions
-  distances <- get_distances(relevant_defenders, interception_coords)
+  distances <- get_distances(relevant_defenders, interception_coords, t_intercept)
   relative_motions <- get_relative_motions(relevant_defenders, interception_coords)
   
   # Weight the relative motions by the inverse of the distance to the receiver
@@ -284,4 +286,50 @@ calculate_separation_metric <- function(play, frame, targeted_receiver, relevant
   separation_metric <- sum(unlist(weighted_motions)) * 100
   return(separation_metric)
 }
+
+calculate_separation_metric(relevant_defenders_frame, interception_coords, t_intercept)
+
+calculate_separation <- function(gameId, playId) {
+  defender_positions <- c("linebacker", "cornerback", "safety")
   
+  targeted_receiver <- motion_plays%>% 
+    filter(gameId == gid & playId == pid) %>% 
+    pull(nflId)
+  
+  play <- tracking_df %>%
+    filter(gameId == gid & playId == pid)
+  
+  # Get interception coords
+  interception_frame <- play %>% filter(event == "pass_arrived") %>%
+    pull(frameId) %>% first()
+  
+  interception_x <- play %>% 
+    filter(frameId == interception_frame & nflId == targeted_receiver) %>%
+    pull(x) %>% first()
+  interception_y <- play %>% 
+    filter(frameId == interception_frame & nflId == targeted_receiver) %>%
+    pull(y) %>% first()
+  
+  interception_coords <- c(interception_x, interception_y)
+  
+  pass_frame <- play %>% filter(event == "pass_forward") %>% pull(frameId) %>% first()
+  relevant_frames <- (pass_frame-10):pass_frame
+  
+  separation_metrics <- list()
+  
+  for (frame in relevant_frames) {
+    t_intercept <- (interception_frame - frame) / 10
+    play_frame <- play %>% filter(frameId == frame)
+    
+    relative_defenders <- play_frame %>% 
+      filter(position_group %in% defender_positions)
+    
+    separation_metric <- calculate_separation_metric(relative_defenders, interception_coords, t_intercept)
+    
+    separation_metrics <- append(separation_metrics, list(separation_metric))
+  }
+  return(separation_metrics)
+}
+
+test <- unlist(calculate_separation(gid, pid))
+test
