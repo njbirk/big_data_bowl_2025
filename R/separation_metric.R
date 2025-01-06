@@ -114,7 +114,7 @@ interception_coords <- c(interception_x, interception_y)
 t_intercept <- (interception_frame - frame) / 10
 
 # We will calculate the position of each defender at the time of interception
-relevant_defenders_frame <- play %>% filter(frameId == frame)
+relevant_defenders_frame <- play %>% filter(frameId == frame) %>% filter(position_group %in% defender_positions)
 
 defender_positions <- list()
 
